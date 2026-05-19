@@ -1,0 +1,2009 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voleybol Topu Tespit & Takip Paneli | YOLO11 & RT-DETR</title>
+    
+    <!-- Premium Google Fonts (Outfit & Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons for Sleek Modern Styling -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Modern CSS Değişkenleri (Premium HSL Tonları) */
+        :root {
+            --bg-deep: #08070d;
+            --glass-bg: rgba(18, 16, 28, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --primary-glow: rgba(108, 92, 231, 0.3);
+            
+            --color-yolo11: #00b894;
+            --color-rtdetr: #00cec9;
+            --color-yolov8: #fdcb6e;
+            
+            --glow-yolo11: 0 0 20px rgba(0, 184, 148, 0.4);
+            --glow-rtdetr: 0 0 20px rgba(0, 206, 201, 0.4);
+            --glow-yolov8: 0 0 20px rgba(253, 203, 110, 0.4);
+            
+            --text-main: #f3f0fc;
+            --text-muted: #a39eb8;
+        }
+
+        /* Temel Reset ve Arka Plan Orbları */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 40px 20px;
+        }
+
+        /* Arka Plan Neon Işık Balonları (Radial Glowing Orbs) - Donmayı önlemek için GPU katmanına taşındı */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px); /* 150px yerine 80px çok daha hafiftir ve benzer etkiyi verir */
+            z-index: -1;
+            opacity: 0.40;
+            pointer-events: none;
+            will-change: transform;
+            transform: translate3d(0, 0, 0); /* Donanım hızlandırmayı zorla */
+        }
+        .orb-1 {
+            width: 450px;
+            height: 450px;
+            background: radial-gradient(circle, #6c5ce7 0%, rgba(0,0,0,0) 70%);
+            top: -100px;
+            left: -100px;
+        }
+        .orb-2 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, #00cec9 0%, rgba(0,0,0,0) 70%);
+            bottom: -150px;
+            right: -100px;
+        }
+        .orb-3 {
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, #ff7675 0%, rgba(0,0,0,0) 70%);
+            top: 40%;
+            left: 50%;
+            transform: translate3d(-50%, -50%, 0); /* 3D transform */
+        }
+
+        /* Ana Glassmorphic Panel Konteyneri - Optimizasyonlu */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background: rgba(18, 16, 28, 0.72); /* 0.45 yerine 0.72 - Opaklık artırılarak blur yükü azaltıldı */
+            backdrop-filter: blur(8px); /* 24px yerine 8px - Tarayıcının render hızını 3 kat artırır */
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 
+                        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+            transform: translate3d(0, 0, 0); /* GPU compositing ile kaydırma akıcılığı sağlar */
+        }
+
+        /* Arayüz Elemanlarında Akıcı Hover ve Hover Efekti Optimizasyonu */
+        .model-card, .btn-analyze, .tab-btn {
+            will-change: transform, border-color, box-shadow;
+            transform: translate3d(0, 0, 0);
+        }
+
+        /* Başlık Katmanı */
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+        
+        .logo-area {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(108, 92, 231, 0.15);
+            border: 1px solid rgba(108, 92, 231, 0.3);
+            width: 70px;
+            height: 70px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 30px var(--primary-glow);
+            animation: pulse-glow 2.5s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 15px rgba(108, 92, 231, 0.2); }
+            100% { box-shadow: 0 0 35px rgba(108, 92, 231, 0.5); }
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff 30%, #a39eb8 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* 2 Sütunlu Grid Layout */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        @media (max-width: 968px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Bölüm Başlıkları */
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+        }
+
+        .section-title i {
+            color: #6c5ce7;
+        }
+
+        /* Mod Arayüz Sekmeleri (Tab Switcher) */
+        .tab-switcher {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 6px;
+            border-radius: 14px;
+            border: 1px solid var(--glass-border);
+            margin-bottom: 25px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Model Seçim Kartları Grid */
+        .model-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .model-card {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .model-card:hover {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .model-card.active[data-id="yolo11s.pt"] { border-color: var(--color-yolo11); box-shadow: var(--glow-yolo11); }
+        .model-card.active[data-id="yolov8s.pt"] { border-color: var(--color-yolov8); box-shadow: var(--glow-yolov8); }
+        .model-card.active[data-id="rtdetr-l.pt"] { border-color: var(--color-rtdetr); box-shadow: var(--glow-rtdetr); }
+
+        .model-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .model-badge {
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .model-card[data-id="yolo11s.pt"] .model-badge { background: rgba(0, 184, 148, 0.15); color: var(--color-yolo11); }
+        .model-card[data-id="yolov8s.pt"] .model-badge { background: rgba(253, 203, 110, 0.15); color: var(--color-yolov8); }
+        .model-card[data-id="rtdetr-l.pt"] .model-badge { background: rgba(0, 206, 201, 0.15); color: var(--color-rtdetr); }
+
+        .model-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .model-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.3;
+        }
+        .train-panel {
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--glass-border);
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 25px;
+        }
+        .train-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .train-item {
+            flex: 1;
+            min-width: 180px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .train-item.selected {
+            box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.55) inset;
+        }
+        .train-item.trained { border-color: rgba(0, 184, 148, 0.6); }
+        .train-item.pending { border-color: rgba(253, 203, 110, 0.6); }
+        .train-controls {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .train-control-row {
+            display: grid;
+            grid-template-columns: 190px 1fr;
+            gap: 8px;
+            align-items: center;
+        }
+        .train-control-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+        .train-controls input {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            border-radius: 8px;
+            padding: 8px;
+        }
+        .train-help {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+            margin-top: 8px;
+            display: grid;
+            gap: 4px;
+        }
+        .train-status {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .train-progress-wrap {
+            margin-top: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+        }
+        .train-progress-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+        .train-progress-bar {
+            width: 100%;
+            height: 9px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            overflow: hidden;
+        }
+        .train-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00b894, #6c5ce7);
+            transition: width 0.35s ease;
+        }
+
+        /* Kaydırma Sürgü Paneli (Sliders) */
+        .slider-group {
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            border-radius: 18px;
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .slider-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .slider-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .slider-header span.val {
+            color: #fff;
+            font-weight: 700;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6c5ce7;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(108, 92, 231, 0.8);
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Dosya Yükleme Alanı (Dropzone) */
+        .dropzone-container {
+            position: relative;
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px dashed rgba(108, 92, 231, 0.4);
+            border-radius: 20px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .dropzone-container:hover, .dropzone-container.dragover {
+            border-color: #6c5ce7;
+            background: rgba(108, 92, 231, 0.05);
+            box-shadow: 0 0 20px rgba(108, 92, 231, 0.15);
+        }
+
+        .dropzone-icon {
+            color: #6c5ce7;
+            background: rgba(108, 92, 231, 0.1);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+        }
+
+        .dropzone-container:hover .dropzone-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .dropzone-text h3 {
+            font-size: 1rem;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+        
+        .dropzone-text p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        #file-info {
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        #file-info button {
+            background: none;
+            border: none;
+            color: #ff7675;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Büyük Analiz Butonu */
+        .btn-analyze {
+            width: 100%;
+            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+            border: none;
+            color: #fff;
+            padding: 18px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 10px 25px rgba(108, 92, 231, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .btn-analyze:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(108, 92, 231, 0.6);
+        }
+
+        .btn-analyze:disabled {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* Çıktı ve Görselleştirme Alanı (Sağ Sütun) */
+        .results-panel {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            gap: 20px;
+            min-height: 450px;
+            position: relative;
+        }
+
+        .no-result {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .no-result i {
+            font-size: 3.5rem;
+            color: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Sonuç Çıktı Penceresi */
+        .result-view {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .viewport-wrapper {
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.6);
+        }
+
+        .viewport-wrapper img, .viewport-wrapper video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        #result-video::-webkit-media-controls-fullscreen-button {
+            display: none;
+        }
+        .viewport-wrapper:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            aspect-ratio: auto !important;
+            background: #000;
+        }
+        .viewport-wrapper:fullscreen video,
+        .viewport-wrapper:fullscreen img,
+        .viewport-wrapper:fullscreen canvas {
+            width: 100%;
+            height: 100%;
+        }
+        .panel-action-btn {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(0, 0, 0, 0.55);
+            color: #fff;
+            border-radius: 8px;
+            padding: 8px 10px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+        .panel-action-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .fullscreen-exit-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 999999;
+            background: rgba(18, 16, 28, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .fullscreen-exit-btn:hover {
+            background: #6c5ce7;
+            border-color: #a29bfe;
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(108, 92, 231, 0.4);
+        }
+        .viewport-wrapper:fullscreen .fullscreen-exit-btn,
+        .viewport-wrapper:-webkit-full-screen .fullscreen-exit-btn {
+            display: inline-flex !important;
+        }
+
+        /* Bilgi Kartları (Stats Cards) */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            padding: 16px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .stat-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-icon.balls { background: rgba(0, 184, 148, 0.15); color: var(--color-yolo11); }
+        .stat-icon.time { background: rgba(0, 206, 201, 0.15); color: var(--color-rtdetr); }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        /* Yükleme Ekranı (Sleek Processing Overlay) */
+        .loading-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(8, 7, 13, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            border-radius: 24px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(108, 92, 231, 0.1);
+            border-top-color: #6c5ce7;
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+            box-shadow: 0 0 15px rgba(108, 92, 231, 0.3);
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text h3 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        
+        .loading-text p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+        
+        /* Custom Toggle Switch for Score Mask */
+        .switch-container {
+            position: relative;
+            display: inline-block;
+            width: 42px;
+            height: 22px;
+            margin: 0;
+        }
+        .switch-container input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.15);
+            transition: .3s;
+            border-radius: 22px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .switch-container input:checked + .switch-slider {
+            background-color: #f1c40f;
+            box-shadow: 0 0 8px rgba(241, 196, 15, 0.4);
+        }
+        .switch-container input:checked + .switch-slider:before {
+            transform: translateX(20px);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Arka Plan Neon Balonları -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="container">
+        <!-- Başlık Bölümü -->
+        <header>
+            <div class="logo-area">
+                <i data-lucide="aperture" style="width: 36px; height: 36px; color: #6c5ce7;"></i>
+            </div>
+            <h1>VOLEYBOL TOPU DETEKTÖRÜ</h1>
+            <p>YOLO11, RT-DETR ve YOLOv8 ile Canlı Karşılaştırmalı Tespit Paneli</p>
+        </header>
+
+        <!-- Çalışma Izgarası -->
+        <div class="workspace-grid">
+            
+            <!-- Sol Panel (Mimariler ve Eğitim) -->
+            <div class="control-panel">
+                <div class="section-title">
+                    <i data-lucide="cpu"></i>
+                    <h2>Model ve Eğitim Yönetimi</h2>
+                </div>
+
+                <!-- Model Seçim Kartları -->
+                <h3 class="slider-header" style="margin-bottom: 12px; font-size: 0.9rem; font-weight: 600;">Eğitilmiş Mimariler</h3>
+                <div class="model-cards">
+                    <div class="model-card active" data-id="yolo11s.pt" onclick="selectModel('yolo11s.pt', this)">
+                        <div class="model-card-header">
+                            <span class="model-name">YOLO11s</span>
+                            <span class="model-badge">Önerilen</span>
+                        </div>
+                        <span class="model-desc">Tek Aşamalı CNN. Hızlı ve hassas top tespiti sunar.</span>
+                    </div>
+
+                    <div class="model-card" data-id="rtdetr-l.pt" onclick="selectModel('rtdetr-l.pt', this)">
+                        <div class="model-card-header">
+                            <span class="model-name">RT-DETR-L</span>
+                            <span class="model-badge">Transformer</span>
+                        </div>
+                        <span class="model-desc">Transformer tabanlı. Küresel bağlamda yüksek kararlılık.</span>
+                    </div>
+
+                    <div class="model-card" data-id="yolov8s.pt" onclick="selectModel('yolov8s.pt', this)">
+                        <div class="model-card-header">
+                            <span class="model-name">YOLOv8s</span>
+                            <span class="model-badge">Klasik</span>
+                        </div>
+                        <span class="model-desc">YOLOv8 mimarisi ile klasik ve kararlı CNN.</span>
+                    </div>
+                </div>
+
+                <div class="train-panel">
+                    <h3 class="slider-header" style="margin-bottom: 10px; font-size: 0.9rem; font-weight: 600;">Model Egitimi</h3>
+                    <div class="train-row" id="train-model-list"></div>
+                    <div class="train-controls">
+                        <div class="train-control-row">
+                            <span class="train-control-label">Epoch (egitim turu)</span>
+                            <input id="train-epochs" type="number" min="1" value="30" placeholder="Epoch" title="Epoch: Veri setinin tamamini kac kez gezecegini belirler.">
+                        </div>
+                        <div class="train-control-row">
+                            <span class="train-control-label">Batch (adim basi)</span>
+                            <input id="train-batch" type="number" min="1" value="8" placeholder="Batch" title="Batch: Her egitim adiminda kac goruntu kullanilacagini belirler.">
+                        </div>
+                        <div class="train-control-row">
+                            <span class="train-control-label">Patience (erken durdurma)</span>
+                            <input id="train-patience" type="number" min="1" value="10" placeholder="Patience" title="Patience: Iyilesme yoksa kac epoch sonra egitim dursun.">
+                        </div>
+                        <div class="train-control-row">
+                            <span class="train-control-label">Img Size (piksel)</span>
+                            <input id="train-imgsz" type="number" min="64" step="32" value="640" placeholder="Img Size" title="Img Size: Modele verilecek goruntu boyutu (piksel).">
+                        </div>
+                        <div id="train-info-note" style="margin-top: 15px; padding: 12px; border-radius: 12px; font-size: 0.75rem; line-height: 1.5; background: rgba(9, 132, 227, 0.1); border: 1px solid rgba(9, 132, 227, 0.25); color: #74b9ff;">
+                            Yükleniyor...
+                        </div>
+                    </div>
+                    <div class="train-help">
+                        <span><b>Epoch</b>: Veri setinin tam tur sayisi. Yuksek olursa daha uzun surer, fazla olursa overfitting olabilir.</span>
+                        <span><b>Batch</b>: Tek adimda islenen goruntu sayisi. Yuksek batch daha hizli olabilir ama daha fazla VRAM ister.</span>
+                        <span><b>Patience</b>: Basari artisi durursa egitimi erken bitirir. Gereksiz uzun egitimi engeller.</span>
+                        <span><b>Img Size</b>: Giris cozunurlugu. Yuksek boyut kucuk nesneleri daha iyi yakalayabilir ama daha yavas/caliskan olur.</span>
+                    </div>
+                    <button class="btn-analyze" id="btn-train" style="margin-top: 12px; padding: 12px; font-size: 0.9rem;" onclick="startSelectedTraining()">Secili Modeli Egit</button>
+                    <div class="train-status" id="train-status-text">Durum: Hazir</div>
+                    <button type="button" onclick="toggleTrainProgressPanel()" style="margin-top:8px;background:none;border:1px solid var(--glass-border);color:#a39eb8;padding:6px 8px;border-radius:8px;cursor:pointer;font-size:0.75rem;">İlerleme Paneli Aç/Kapat</button>
+                    <div class="train-progress-wrap" id="train-progress-wrap">
+                        <div class="train-progress-head">
+                            <span id="train-progress-label">Egitim ilerleyisi</span>
+                            <span>Canli</span>
+                        </div>
+                        <div class="train-progress-bar">
+                            <div class="train-progress-fill" id="train-progress-fill"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sağ Panel (İnteraktif Tahmin ve Canlı Analiz) -->
+            <div class="results-panel" id="results-panel">
+                <!-- Yükleme Efekti -->
+                <div class="loading-overlay" id="loading-overlay">
+                    <div class="spinner"></div>
+                    <div class="loading-text">
+                        <h3>Model Çıkarım Yapıyor...</h3>
+                        <p id="loading-sub">Görüntü pikselleri yapay zeka katmanlarından süzülüyor.</p>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-bottom: 0px; justify-content: space-between; align-items: center; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i data-lucide="eye" style="color: #00cec9;"></i>
+                        <h2>Analiz Çıktısı</h2>
+                    </div>
+                    <button class="panel-action-btn" type="button" onclick="toggleViewportFullscreen(event)" title="Tam ekran göster">
+                        <i data-lucide="maximize" style="width: 16px; height: 16px;"></i>
+                        Tam Ekran
+                    </button>
+                </div>
+
+                <!-- Çıktı Ekranı / Viewport -->
+                <div class="viewport-wrapper" id="viewport-wrapper" style="position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 16px; border: 1px solid var(--glass-border); box-shadow: 0 15px 30px rgba(0,0,0,0.6);">
+                    
+                    <!-- Sonuç Yok Ekranı (Viewport İçinde) -->
+                    <div class="no-result" id="no-result" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; color: var(--text-muted); text-align: center; position: absolute; z-index: 5;">
+                        <i data-lucide="sparkles" style="width: 48px; height: 48px; color: rgba(255,255,255,0.25);"></i>
+                        <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.2rem; color: #fff;">Hazır</h3>
+                        <p style="font-size: 0.85rem; max-width: 320px;">Aşağıdan analiz modunu seçip bir dosya yükleyin, ardından analizi başlatın.</p>
+                    </div>
+
+                    <img id="result-img" src="" alt="Sonuç Resmi" style="display: none; max-width: 100%; max-height: 100%; object-fit: contain; z-index: 1;">
+                    <video id="result-video" playsinline controls controlslist="nofullscreen nodownload noremoteplayback" disablepictureinpicture style="display: none; max-width: 100%; max-height: 100%; object-fit: contain; z-index: 1;"></video>
+                    <canvas id="overlay-canvas" style="position: absolute; pointer-events: none; z-index: 2; display: none;"></canvas>
+                    <button class="panel-action-btn fullscreen-exit-btn" type="button" onclick="exitViewportFullscreen(event)" title="Tam ekrandan çık">
+                        <i data-lucide="minimize" style="width: 16px; height: 16px;"></i>
+                        Tam Ekrandan Çık
+                    </button>
+                    
+                    <!-- Draggable & Resizable Score Mask Box -->
+                    <div id="mask-box" style="display: none; position: absolute; top: 15px; left: 15px; width: 120px; height: 50px; background: rgba(0, 0, 0, 0.85); border: 2px dashed #f1c40f; color: #f1c40f; z-index: 10; cursor: move; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; user-select: none;">
+                        <span>SKOR MASKESİ</span>
+                        <div id="mask-resize" style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #f1c40f; cursor: se-resize; border-top-left-radius: 3px;"></div>
+                    </div>
+                </div>
+
+                <!-- Sonuç İstatistikleri -->
+                <div class="result-view" id="result-view" style="display: none; width: 100%; flex-direction: column; gap: 15px;">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon balls">
+                                <i data-lucide="target" style="width: 22px; height: 22px;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Tespit Edilen Top</span>
+                                <span class="stat-value" id="stat-count">-</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon time">
+                                <i data-lucide="cpu" style="width: 22px; height: 22px;"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label" id="stat-speed-label">Çıkarım Hızı</span>
+                                <span class="stat-value" id="stat-speed">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mod Sekmeleri -->
+                <div class="tab-switcher" style="margin-bottom: 0px;">
+                    <button class="tab-btn" onclick="switchMode('image', this)">
+                        <i data-lucide="image"></i> Görüntü Analizi
+                    </button>
+                    <button class="tab-btn" onclick="switchMode('video', this)">
+                        <i data-lucide="video"></i> Video Takibi
+                    </button>
+                </div>
+
+                <!-- Dosya Seçim Alanı -->
+                <div class="dropzone-container" id="dropzone" onclick="triggerFileInput()" style="padding: 25px 20px;">
+                    <div class="dropzone-icon" style="width: 45px; height: 45px;">
+                        <i data-lucide="cloud-upload" style="width: 22px; height: 22px;"></i>
+                    </div>
+                    <div class="dropzone-text">
+                        <h3 id="dropzone-title" style="font-size: 0.95rem;">Analiz Edilecek Dosyayı Seçin</h3>
+                        <p id="dropzone-desc" style="font-size: 0.75rem;">Sürükle bırak yapabilir veya tıklayarak seçebilirsiniz</p>
+                    </div>
+                    <input type="file" id="file-input" onchange="handleFileSelect(event)">
+                </div>
+
+                <!-- Seçilen Dosya Detayı -->
+                <div id="file-info" style="margin-top: -10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <i data-lucide="file" style="color: #6c5ce7; width: 18px; height: 18px;"></i>
+                        <span id="file-name" style="font-weight: 500;">dosya_adi.jpg</span>
+                    </div>
+                    <button onclick="removeSelectedFile(event)">
+                        <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i>
+                    </button>
+                </div>
+
+                <!-- Çalıştır Butonu -->
+                <button class="btn-analyze" id="btn-submit" disabled onclick="submitAnalysis()" style="margin-top: 0px; padding: 15px; font-size: 1rem;">
+                    <i data-lucide="play" style="width: 20px; height: 20px;"></i>
+                    ÖNCE MOD SEÇ
+                </button>
+
+                <!-- Eşik Kaydırıcıları -->
+                <div class="slider-group" style="margin-bottom: 0px; padding: 15px; gap: 12px;">
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span>Confidence (Güven) Eşiği</span>
+                            <span class="val" id="conf-val">0.50</span>
+                        </div>
+                        <input type="range" id="conf-slider" min="0.05" max="0.95" step="0.05" value="0.50" oninput="updateSlider('conf')">
+                    </div>
+                    <div class="slider-item" id="iou-slider-container">
+                        <div class="slider-header">
+                            <span>NMS IoU (Örtüşme) Eşiği</span>
+                            <span class="val" id="iou-val">0.45</span>
+                        </div>
+                        <input type="range" id="iou-slider" min="0.10" max="0.90" step="0.05" value="0.45" oninput="updateSlider('iou')">
+                    </div>
+                </div>
+
+                <!-- Skor Maskeleme Paneli -->
+                <div class="slider-group" id="score-mask-container" style="display: none; padding: 15px; margin-bottom: 0px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px;">
+                        <span style="font-size: 0.85rem; font-weight: 600; color: #f1c40f; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="shield-alert" style="width: 16px; height: 16px; color: #f1c40f;"></i>
+                            Statik Skor Maskesi (Score ROI Mask)
+                        </span>
+                        <label class="switch-container">
+                            <input type="checkbox" id="chk-mask-enable" onchange="toggleScoreMask()">
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                    <span style="font-size: 0.72rem; color: #b2bec3; line-height: 1.3; display: block;">
+                        Ekrandaki skor tabelası logosunu/logosundaki topu maskeler. İşaretli kutuyu skor tablosunun üstüne sürükleyip boyutlandırın.
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lucide simgelerini yükle
+        lucide.createIcons();
+
+        // Aktif Arayüz Parametreleri
+        let activeMode = null; // 'image' veya 'video'
+        let selectedModelId = 'yolo11s.pt';
+        let selectedFile = null;
+        let selectedTrainModel = null;
+        let trainProgressCollapsed = false;
+
+        // Canlı Video Analiz Değişkenleri
+        const videoEl = document.getElementById('result-video');
+        const canvasEl = document.getElementById('overlay-canvas');
+        const imgEl = document.getElementById('result-img');
+        const ctx = canvasEl.getContext('2d');
+        
+        let isLiveAnalyzing = false;
+        let lastAnalysisTime = 0;
+        const analysisInterval = 85; // ~12 FPS (Hız ve GPU optimizasyonu için ideal)
+        let ballTrail = [];
+        let pendingFrameRequest = false;
+        let playLoop = null;
+        let isSeeking = false;
+        let isPlayingSync = false;
+        let isProgrammaticPause = false;
+        const frameTimeStep = 0.04;
+
+        // Skor Maskesi Değişkenleri
+        let maskX = 15;
+        let maskY = 15;
+        let maskW = 120;
+        let maskH = 50;
+        let maskRelX = 0.03;
+        let maskRelY = 0.03;
+        let maskRelW = 0.18;
+        let maskRelH = 0.10;
+        let isDraggingMask = false;
+        let isResizingMask = false;
+
+        // Diske yazmadan kare yakalama için offscreen canvas
+        const offscreenCanvas = document.createElement('canvas');
+        const offscreenCtx = offscreenCanvas.getContext('2d');
+
+        function onTrainModelChanged(modelId) {
+            const epochsInput = document.getElementById('train-epochs');
+            const patienceInput = document.getElementById('train-patience');
+            const batchInput = document.getElementById('train-batch');
+            const infoNote = document.getElementById('train-info-note');
+            
+            if (!infoNote) return;
+            if (!modelId) return;
+
+            if (modelId.toLowerCase().includes('rtdetr')) {
+                epochsInput.value = '50';
+                patienceInput.value = '20';
+                batchInput.value = '4'; // GPU bellek koruması için default 4
+                infoNote.style.background = 'rgba(253, 203, 110, 0.1)';
+                infoNote.style.borderColor = 'rgba(253, 203, 110, 0.3)';
+                infoNote.style.color = '#ffeaa7';
+                infoNote.innerHTML = '⚡ <b>RT-DETR-L (Transformer) seçildi!</b><br>Bu model veri canavarı olduğundan, ezberlemeyi önleyen düşük başlangıç öğrenme oranı (0.0001), 5 epoch ısınma (warmup) ve <b>Mozaik artırımı kapalı</b> (0.0) olarak arka planda otomatik optimize edildi. En az 50 epoch eğitilmesi önerilir.';
+            } else {
+                epochsInput.value = '30';
+                patienceInput.value = '10';
+                batchInput.value = '8';
+                infoNote.style.background = 'rgba(9, 132, 227, 0.1)';
+                infoNote.style.borderColor = 'rgba(9, 132, 227, 0.25)';
+                infoNote.style.color = '#74b9ff';
+                infoNote.innerHTML = '🚀 <b>YOLO (CNN) seçildi!</b><br>Bu model bir Evrişimli Sinir Ağı olduğundan, başlangıç öğrenme oranı 0.001 (orta) ve küçük nesneler için <b>Mozaik veri artırımı açık</b> (1.0) olarak ayarlandı. 30 epoch eğitim yeterlidir.';
+            }
+        }
+
+        function loadTrainingModels(isInitial = false) {
+            fetch('/api/train/models')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) return;
+                    const listEl = document.getElementById('train-model-list');
+                    listEl.innerHTML = '';
+                    let selectedMatched = false;
+                    data.models.forEach(m => {
+                        const div = document.createElement('div');
+                        div.className = `train-item ${m.trained ? 'trained' : 'pending'}`;
+                        const actionLabel = m.trained ? 'Yeniden Egit' : 'Egit';
+                        div.innerText = `${m.name} - ${m.trained ? 'Egitildi' : 'Egitilmemis'} (${actionLabel})`;
+                        div.onclick = () => {
+                            selectedTrainModel = m.id;
+                            document.querySelectorAll('.train-item').forEach(el => el.classList.remove('selected'));
+                            div.classList.add('selected');
+                            document.getElementById('btn-train').innerText = actionLabel;
+                            onTrainModelChanged(m.id);
+                        };
+                        listEl.appendChild(div);
+                        if (selectedTrainModel === m.id) {
+                            selectedMatched = true;
+                            div.classList.add('selected');
+                            document.getElementById('btn-train').innerText = actionLabel;
+                            if (isInitial) {
+                                onTrainModelChanged(m.id);
+                            }
+                        } else if (!selectedTrainModel && !m.trained) {
+                            selectedTrainModel = m.id;
+                            div.classList.add('selected');
+                            document.getElementById('btn-train').innerText = 'Egit';
+                            onTrainModelChanged(m.id);
+                        }
+                    });
+                    if (!selectedMatched && selectedTrainModel) {
+                        const maybeSelected = data.models.find(x => x.id === selectedTrainModel);
+                        if (!maybeSelected) selectedTrainModel = null;
+                    }
+                    if (!selectedTrainModel && data.models.length > 0) {
+                        selectedTrainModel = data.models[0].id;
+                        const first = listEl.querySelector('.train-item');
+                        if (first) first.classList.add('selected');
+                        document.getElementById('btn-train').innerText = 'Yeniden Egit';
+                        onTrainModelChanged(selectedTrainModel);
+                    }
+                });
+        }
+
+        function pollTrainingStatus() {
+            fetch('/api/train/status')
+                .then(res => res.json())
+                .then(data => {
+                    const statusText = document.getElementById('train-status-text');
+                    statusText.innerText = `Durum: ${data.message || 'Hazir'}`;
+                    document.getElementById('btn-train').disabled = !!data.running;
+                    const progressWrap = document.getElementById('train-progress-wrap');
+                    const progressFill = document.getElementById('train-progress-fill');
+                    const progressLabel = document.getElementById('train-progress-label');
+                    if (data.running || data.progress_pct > 0) {
+                        const currentEpoch = Number(data.current_epoch || 0).toFixed(2);
+                        const targetEpochs = data.target_epochs || 0;
+                        progressWrap.style.display = trainProgressCollapsed ? 'none' : 'block';
+                        progressFill.style.width = `${data.progress_pct || 0}%`;
+                        if (data.progress_pct === 100) {
+                            progressLabel.innerText = `Eğitim Bitti: %100 (${targetEpochs}/${targetEpochs})`;
+                        } else {
+                            progressLabel.innerText = `Egitim ilerleyisi: %${data.progress_pct || 0} (${currentEpoch}/${targetEpochs})`;
+                        }
+                    } else {
+                        progressFill.style.width = '0%';
+                        progressLabel.innerText = 'Egitim ilerleyisi';
+                        progressWrap.style.display = trainProgressCollapsed ? 'none' : 'block';
+                    }
+                    loadTrainingModels();
+                });
+        }
+
+        function toggleTrainProgressPanel() {
+            trainProgressCollapsed = !trainProgressCollapsed;
+            document.getElementById('train-progress-wrap').style.display = trainProgressCollapsed ? 'none' : 'block';
+        }
+
+        function startSelectedTraining() {
+            if (!selectedTrainModel) {
+                alert('Lutfen egitilecek bir model secin.');
+                return;
+            }
+            const payload = {
+                model: selectedTrainModel,
+                epochs: parseInt(document.getElementById('train-epochs').value || '30', 10),
+                batch: parseInt(document.getElementById('train-batch').value || '8', 10),
+                patience: parseInt(document.getElementById('train-patience').value || '10', 10),
+                imgsz: parseInt(document.getElementById('train-imgsz').value || '640', 10)
+            };
+            fetch('/api/train/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    alert(data.error || 'Egitim baslatilamadi.');
+                    return;
+                }
+                pollTrainingStatus();
+            })
+            .catch(err => alert('Egitim istegi hatasi: ' + err));
+        }
+
+        // Drag & Drop İşleyicileri
+        const dropzone = document.getElementById('dropzone');
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, e => {
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, e => {
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', e => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                setFile(files[0]);
+            }
+        });
+
+        function triggerFileInput() {
+            if (!activeMode) {
+                alert('Önce Görüntü Analizi veya Video Takibi modu seçin.');
+                return;
+            }
+            document.getElementById('file-input').click();
+        }
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                setFile(files[0]);
+            }
+        }
+
+        function setFile(file) {
+            selectedFile = file;
+            document.getElementById('file-name').innerText = file.name;
+            document.getElementById('file-info').style.display = 'flex';
+            
+            // "ANALİZİ BAŞLAT" butonunu aktif et
+            const btnSubmit = document.getElementById('btn-submit');
+            btnSubmit.removeAttribute('disabled');
+            
+            // Dropzone yazılarını güncelle
+            document.getElementById('dropzone-title').innerText = "Dosya Seçildi";
+            document.getElementById('dropzone-desc').innerText = file.name;
+
+            // Eğer video modundaysak, videoyu sunucuya yüklemeden yerel URL ile anında yükle!
+            if (activeMode === 'video') {
+                stopLiveAnalysis();
+                ballTrail = [];
+                ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+                
+                const fileURL = URL.createObjectURL(file);
+                
+                document.getElementById('no-result').style.display = 'none';
+                imgEl.style.display = 'none';
+                
+                videoEl.src = fileURL;
+                videoEl.style.display = 'block';
+                canvasEl.style.display = 'block';
+                
+                document.getElementById('result-view').style.display = 'flex';
+                
+                // Video yüklendiğinde boyutları canvas ile eşle ve otomatik takibi başlat!
+                videoEl.onloadedmetadata = () => {
+                    resizeOverlayCanvas();
+                    startSyncPlayback();
+                };
+                
+                btnSubmit.innerHTML = `<i data-lucide="play" style="width: 20px; height: 20px;"></i> CANLI TAKİBİ BAŞLAT`;
+                lucide.createIcons();
+                
+                document.getElementById('stat-count').innerText = "Takip Aktif";
+                document.getElementById('stat-speed-label').innerText = "Yörünge Modu";
+                document.getElementById('stat-speed').innerText = "Canlı Aktif";
+            }
+        }
+
+        function removeSelectedFile(event) {
+            if (event) event.stopPropagation();
+            
+            stopLiveAnalysis();
+            selectedFile = null;
+            document.getElementById('file-input').value = '';
+            document.getElementById('file-info').style.display = 'none';
+            document.getElementById('btn-submit').setAttribute('disabled', 'true');
+            
+            // Dropzone varsayılana dön
+            document.getElementById('dropzone-title').innerText = "Analiz Edilecek Dosyayı Seçin";
+            document.getElementById('dropzone-desc').innerText = "Sürükle bırak yapabilir veya tıklayarak seçebilirsiniz";
+            
+            // Görünümleri sıfırla
+            document.getElementById('result-view').style.display = 'none';
+            document.getElementById('no-result').style.display = 'flex';
+            videoEl.style.display = 'none';
+            videoEl.src = "";
+            canvasEl.style.display = 'none';
+            ballTrail = [];
+        }
+
+        // Mod Değiştirici (Tab switcher)
+        function switchMode(mode, btnEl) {
+            activeMode = mode;
+            
+            // Buton aktiflik sınıflarını ayarla
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            if (btnEl) {
+                btnEl.classList.add('active');
+            } else {
+                const activeBtn = mode === 'image' ? buttons[0] : buttons[1];
+                if (activeBtn) activeBtn.classList.add('active');
+            }
+            
+            // File input filtresini ve açıklamayı güncelle
+            const fileInput = document.getElementById('file-input');
+            const dropzoneDesc = document.getElementById('dropzone-desc');
+            const btnSubmit = document.getElementById('btn-submit');
+            
+            if (mode === 'image') {
+                fileInput.setAttribute('accept', 'image/*');
+                if (!selectedFile) dropzoneDesc.innerText = "Resim sürükleyip bırakabilir veya seçebilirsiniz";
+                document.getElementById('iou-slider-container').style.display = 'flex';
+                btnSubmit.innerHTML = `<i data-lucide="play" style="width: 20px; height: 20px;"></i> ANALİZİ BAŞLAT`;
+                
+                // Resim modunda skor maskesi panelini gizle ve sıfırla
+                document.getElementById('score-mask-container').style.display = 'none';
+                document.getElementById('mask-box').style.display = 'none';
+                document.getElementById('chk-mask-enable').checked = false;
+            } else {
+                fileInput.setAttribute('accept', 'video/*');
+                if (!selectedFile) dropzoneDesc.innerText = "Video sürükleyip bırakabilir veya seçebilirsiniz";
+                document.getElementById('iou-slider-container').style.display = 'flex';
+                btnSubmit.innerHTML = `<i data-lucide="play" style="width: 20px; height: 20px;"></i> CANLI TAKİBİ BAŞLAT`;
+                
+                // Video modunda skor maskesi panelini göster
+                document.getElementById('score-mask-container').style.display = 'block';
+            }
+            lucide.createIcons();
+            
+            // Seçilen dosyayı temizle (uyumsuzluk olmaması için)
+            if (selectedFile) {
+                removeSelectedFile(null);
+            }
+        }
+
+        function toggleViewportFullscreen(event) {
+            if (event) event.stopPropagation();
+            const wrapper = document.getElementById('viewport-wrapper');
+            if (document.fullscreenElement === wrapper) {
+                document.exitFullscreen();
+                return;
+            }
+            if (wrapper.requestFullscreen) {
+                wrapper.requestFullscreen();
+            }
+        }
+
+        function exitViewportFullscreen(event) {
+            if (event) event.stopPropagation();
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        }
+
+        // Model Seçici
+        function selectModel(modelId, cardEl) {
+            selectedModelId = modelId;
+            
+            const cards = document.querySelectorAll('.model-card');
+            cards.forEach(card => card.classList.remove('active'));
+            if (cardEl) {
+                cardEl.classList.add('active');
+            } else {
+                const activeCard = Array.from(cards).find(c => c.getAttribute('data-id') === modelId);
+                if (activeCard) activeCard.classList.add('active');
+            }
+            
+            document.getElementById('iou-slider-container').style.display = 'flex';
+            
+            // Eğer video yüklüyse ve duraklatılmışsa, yeni seçilen modelle kareyi hemen analiz et
+            if (activeMode === 'video' && selectedFile && videoEl.paused) {
+                analyzeCurrentFrame(true);
+            }
+        }
+
+        // Kaydırıcı Gösterge Güncelleme
+        function updateSlider(type) {
+            const val = document.getElementById(`${type}-slider`).value;
+            document.getElementById(`${type}-val`).innerText = val;
+            
+            // Eğer video yüklüyse ve duraklatılmışsa, yeni parametrelerle kareyi hemen analiz et
+            if (activeMode === 'video' && selectedFile && videoEl.paused) {
+                analyzeCurrentFrame(true);
+            }
+        }
+
+        // --- CANLI VİDEO ANALİZ MOTORU ---
+
+        function resizeOverlayCanvas() {
+            if (videoEl.style.display === 'none' || videoEl.videoWidth === 0) {
+                canvasEl.style.display = 'none';
+                return;
+            }
+            
+            const geom = getVideoImageSizeAndPosition(videoEl);
+            canvasEl.style.position = 'absolute';
+            canvasEl.style.zIndex = '2';
+            canvasEl.style.width = `${geom.width}px`;
+            canvasEl.style.height = `${geom.height}px`;
+            canvasEl.style.left = `${geom.left}px`;
+            canvasEl.style.top = `${geom.top}px`;
+            
+            // Canvas'ın dahili piksel boyutunu elementin görünür boyutuna eşle
+            canvasEl.width = geom.width;
+            canvasEl.height = geom.height;
+            canvasEl.style.display = 'block';
+            
+            // Yörüngeyi yeniden çiz
+            redrawTrail();
+
+            // Skor maskesini de yeni boyutlara göre güncelle (oransal kuculup buyume)
+            syncMaskFromRelative();
+        }
+
+        // Çift tıklama ile tam ekran/çıkış kontrolü (Premium UX)
+        videoEl.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            toggleViewportFullscreen(e);
+        });
+        imgEl.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            toggleViewportFullscreen(e);
+        });
+
+        // Video kapsayıcısının içindeki asıl video piksellerinin konumunu hesaplar (Letterbox korumalı)
+        function getVideoImageSizeAndPosition(video) {
+            const videoRatio = video.videoWidth / video.videoHeight;
+            const elementWidth = video.clientWidth;
+            const elementHeight = video.clientHeight;
+            const elementRatio = elementWidth / elementHeight;
+            
+            let w, h, x, y;
+            if (elementRatio > videoRatio) {
+                h = elementHeight;
+                w = h * videoRatio;
+                x = (elementWidth - w) / 2;
+                y = 0;
+            } else {
+                w = elementWidth;
+                h = w / videoRatio;
+                x = 0;
+                y = (elementHeight - h) / 2;
+            }
+            return { width: w, height: h, left: x, top: y };
+        }
+
+        function syncMaskFromRelative() {
+            const geom = getVideoImageSizeAndPosition(videoEl);
+            if (!Number.isFinite(geom.width) || geom.width <= 0 || !Number.isFinite(geom.height) || geom.height <= 0) return;
+            maskX = geom.left + maskRelX * geom.width;
+            maskY = geom.top + maskRelY * geom.height;
+            maskW = maskRelW * geom.width;
+            maskH = maskRelH * geom.height;
+
+            const maskBox = document.getElementById('mask-box');
+            maskBox.style.left = `${maskX}px`;
+            maskBox.style.top = `${maskY}px`;
+            maskBox.style.width = `${maskW}px`;
+            maskBox.style.height = `${maskH}px`;
+        }
+
+        function syncMaskToRelative() {
+            const geom = getVideoImageSizeAndPosition(videoEl);
+            if (!Number.isFinite(geom.width) || geom.width <= 0 || !Number.isFinite(geom.height) || geom.height <= 0) return;
+            maskRelX = Math.max(0, Math.min(1, (maskX - geom.left) / geom.width));
+            maskRelY = Math.max(0, Math.min(1, (maskY - geom.top) / geom.height));
+            maskRelW = Math.max(0.01, Math.min(1 - maskRelX, maskW / geom.width));
+            maskRelH = Math.max(0.01, Math.min(1 - maskRelY, maskH / geom.height));
+        }
+
+        function analyzeCurrentFrame(force = false) {
+            if (pendingFrameRequest) return;
+            if (videoEl.paused && !force && !isSeeking) return;
+            if (videoEl.videoWidth === 0) return;
+
+            // Mevcut kareyi offscreen canvas'a aktar
+            offscreenCanvas.width = videoEl.videoWidth;
+            offscreenCanvas.height = videoEl.videoHeight;
+            offscreenCtx.drawImage(videoEl, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            
+            // FAKAT GÖNDERMEDEN ÖNCE SKOR MASKESİNİ SİYAH KUTU OLARAK KARENİN ÜSTÜNE ÇİZ!
+            applyMaskToOffscreenCanvas(offscreenCtx, offscreenCanvas.width, offscreenCanvas.height);
+            
+            pendingFrameRequest = true;
+            
+            // Canvas'ı diske yazmadan JPEG blob sıkıştırmasıyla API'ye gönder (çok hızlı)
+            offscreenCanvas.toBlob((blob) => {
+                if (!blob) {
+                    pendingFrameRequest = false;
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', blob, 'frame.jpg');
+                formData.append('model', selectedModelId);
+                formData.append('conf', document.getElementById('conf-slider').value);
+                formData.append('iou', document.getElementById('iou-slider').value);
+                
+                fetch('/api/predict-frame', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    pendingFrameRequest = false;
+                    lastAnalysisTime = Date.now();
+                    
+                    if (data.success) {
+                        // Çıkarım süresi istatistiğini güncelle
+                        document.getElementById('stat-speed-label').innerText = "Çıkarım Hızı";
+                        document.getElementById('stat-speed').innerText = `${data.inference_time_ms} ms`;
+                        document.getElementById('stat-count').innerText = `${data.boxes.length} top`;
+                        
+                        // Tespit kutusunu ve yörüngeyi çiz
+                        drawFrameDetections(data.boxes);
+                    }
+                })
+                .catch(err => {
+                    pendingFrameRequest = false;
+                    console.error('Canlı kare tahmin hatası:', err);
+                });
+            }, 'image/jpeg', 0.85);
+        }
+
+        function drawFrameDetections(boxes) {
+            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            const scaleX = canvasEl.width / videoEl.videoWidth;
+            const scaleY = canvasEl.height / videoEl.videoHeight;
+            
+            if (boxes.length > 0) {
+                const box = boxes[0].box; // Sadece en yüksek güvenilirlikli ilk kutuyu al
+                const score = boxes[0].score;
+                
+                const x1 = box[0] * scaleX;
+                const y1 = box[1] * scaleY;
+                const w = (box[2] - box[0]) * scaleX;
+                const h = (box[3] - box[1]) * scaleY;
+                
+                const cx = x1 + w / 2;
+                const cy = y1 + h / 2;
+                
+                // Eğer senkronize oynatma aktifse veya video normal oynatılıyorsa yörüngeye ekle
+                if ((isPlayingSync || !videoEl.paused) && !isSeeking) {
+                    if (ballTrail.length > 0) {
+                        const lastPoint = ballTrail[ballTrail.length - 1];
+                        // Zaman farkı çok büyükse (Örn: slider ile atlama yapıldıysa) yörüngeyi temizle
+                        if (Math.abs(videoEl.currentTime - lastPoint.videoTime) > 0.4) {
+                            ballTrail = [];
+                        }
+                    }
+                    ballTrail.push({ x: cx, y: cy, videoTime: videoEl.currentTime });
+                    if (ballTrail.length > 10) ballTrail.shift();
+                }
+                
+                // 1. Parlayan Sınır Kutusunu Çiz (Neon Efekti)
+                ctx.strokeStyle = '#00b894';
+                ctx.lineWidth = 3;
+                ctx.shadowColor = '#00b894';
+                ctx.shadowBlur = 10;
+                ctx.strokeRect(x1, y1, w, h);
+                
+                // 2. Etiket Kutusu Çiz
+                ctx.fillStyle = '#00b894';
+                ctx.shadowBlur = 0;
+                ctx.fillRect(x1 - 1, y1 - 22, 75, 22);
+                
+                // 3. Etiket Yazısını Çiz
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 11px Inter';
+                ctx.fillText(`ball ${Math.round(score * 100)}%`, x1 + 5, y1 - 7);
+            }
+            
+            // Yörünge parıltılı izini çiz
+            redrawTrail();
+        }
+
+        function redrawTrail() {
+            if (ballTrail.length < 2) return;
+            
+            ctx.shadowBlur = 6;
+            
+            for (let i = 1; i < ballTrail.length; i++) {
+                const p1 = ballTrail[i - 1];
+                const p2 = ballTrail[i];
+                
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                
+                // Zaman geçtikçe kalınlık uca doğru artar (Degrade parlayan yörünge)
+                const thickness = Math.sqrt(10 / (ballTrail.length - i)) * 2.0;
+                ctx.lineWidth = Math.max(1.5, thickness);
+                
+                const ratio = i / ballTrail.length;
+                const r = Math.round(255 * ratio);
+                const g = Math.round(100 * ratio);
+                const b = Math.round(255 * (1 - ratio));
+                
+                // Alfa opaklığı (opacity) uygulayarak geçmiş noktaların su gibi eriyip kaybolmasını sağlıyoruz
+                ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${ratio})`;
+                ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${ratio})`;
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        // --- Video Oynatıcı Olay İzleyicileri (Event Listeners) ---
+
+        // Senkron Oynatma Kontrol Fonksiyonları (Analiz Hızına Göre Kilitleme)
+        function startSyncPlayback() {
+            isPlayingSync = true;
+            // Video elementini serbest oynatmaktan durduruyoruz, kontrolü biz alacağız
+            isProgrammaticPause = true;
+            videoEl.pause();
+            setTimeout(() => { isProgrammaticPause = false; }, 50);
+            
+            const btnSubmit = document.getElementById('btn-submit');
+            btnSubmit.innerHTML = `<i data-lucide="pause" style="width: 20px; height: 20px;"></i> CANLI TAKİBİ DURDUR`;
+            lucide.createIcons();
+            
+            // İlk senkron adımı tetikle
+            runSyncStep();
+        }
+
+        function stopSyncPlayback() {
+            isPlayingSync = false;
+            isProgrammaticPause = true;
+            videoEl.pause();
+            setTimeout(() => { isProgrammaticPause = false; }, 50);
+            
+            const btnSubmit = document.getElementById('btn-submit');
+            btnSubmit.innerHTML = `<i data-lucide="play" style="width: 20px; height: 20px;"></i> CANLI TAKİBİ BAŞLAT`;
+            lucide.createIcons();
+        }
+
+        function runSyncStep() {
+            if (!isPlayingSync) return;
+            
+            // Video sonuna ulaşıldıysa durdur
+            if (videoEl.ended || videoEl.currentTime >= videoEl.duration - 0.02) {
+                stopSyncPlayback();
+                return;
+            }
+            
+            if (videoEl.videoWidth === 0) return;
+
+            // Mevcut kareyi offscreen canvas'a aktar
+            offscreenCanvas.width = videoEl.videoWidth;
+            offscreenCanvas.height = videoEl.videoHeight;
+            offscreenCtx.drawImage(videoEl, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
+            
+            // FAKAT GÖNDERMEDEN ÖNCE SKOR MASKESİNİ SİYAH KUTU OLARAK KARENİN ÜSTÜNE ÇİZ!
+            applyMaskToOffscreenCanvas(offscreenCtx, offscreenCanvas.width, offscreenCanvas.height);
+            
+            pendingFrameRequest = true;
+            
+            // Kareyi JPEG sıkıştırmasıyla RAM'den gönder
+            offscreenCanvas.toBlob((blob) => {
+                if (!blob) {
+                    pendingFrameRequest = false;
+                    if (isPlayingSync) advanceVideoTime();
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append('file', blob, 'frame.jpg');
+                formData.append('model', selectedModelId);
+                formData.append('conf', document.getElementById('conf-slider').value);
+                formData.append('iou', document.getElementById('iou-slider').value);
+                
+                fetch('/api/predict-frame', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    pendingFrameRequest = false;
+                    
+                    if (!isPlayingSync) return;
+                    
+                    if (data.success) {
+                        // Arayüz istatistiklerini güncelle
+                        document.getElementById('stat-speed-label').innerText = "Çıkarım Hızı";
+                        document.getElementById('stat-speed').innerText = `${data.inference_time_ms} ms`;
+                        document.getElementById('stat-count').innerText = `${data.boxes.length} top`;
+                        
+                        // Tespitleri çiz (Video paused olduğu için çizim tam o kareye sabitlenir!)
+                        drawFrameDetections(data.boxes);
+                    }
+                    
+                    // Önceki kare çizildikten SONRA videoyu bir kare ileri sar!
+                    advanceVideoTime();
+                })
+                .catch(err => {
+                    pendingFrameRequest = false;
+                    console.error('Canlı kare tahmin hatası:', err);
+                    if (isPlayingSync) {
+                        // Hata durumunda kilitlenmemesi için 100ms sonra bir sonraki kareye geç
+                        setTimeout(advanceVideoTime, 100);
+                    }
+                });
+            }, 'image/jpeg', 0.85);
+        }
+
+        function advanceVideoTime() {
+            if (!isPlayingSync) return;
+            
+            // Video zamanını 0.04 saniye (~25 FPS kare adımı) artırıyoruz
+            let nextTime = videoEl.currentTime + frameTimeStep;
+            if (nextTime >= videoEl.duration) {
+                stopSyncPlayback();
+                return;
+            }
+            
+            // currentTime'ı artırmak browser'da 'seeked' olayını tetikler
+            videoEl.currentTime = nextTime;
+        }
+        
+        // Video oynatıcı üzerinde direkt Play'e basılırsa senkron takibi başlat
+        videoEl.addEventListener('play', (e) => {
+            // Tarayıcının kontrolsüz akmasını engellemek için hemen pause yapıp kontrolü devralıyoruz
+            isProgrammaticPause = true;
+            videoEl.pause();
+            setTimeout(() => { isProgrammaticPause = false; }, 50);
+            
+            if (!isPlayingSync) {
+                startSyncPlayback();
+            }
+        });
+
+        // Video oynatıcı üzerinde direkt Pause'a basılırsa senkron takibi durdur
+        videoEl.addEventListener('pause', () => {
+            if (isPlayingSync && !isProgrammaticPause) {
+                stopSyncPlayback();
+            }
+        });
+
+        // Kullanıcı video slider çubuğunu (ilerleticiyi) oynatırken canlı takip
+        videoEl.addEventListener('seeking', () => {
+            if (!isPlayingSync) {
+                isSeeking = true;
+                analyzeCurrentFrame(true);
+            }
+        });
+
+        videoEl.addEventListener('seeked', () => {
+            if (isPlayingSync) {
+                // Tarayıcı sonraki kareyi render etmeyi bitirdi! 10ms render senkronizasyonu sonrası analizi yap!
+                setTimeout(runSyncStep, 10);
+            } else {
+                isSeeking = false;
+                ballTrail = [];
+                analyzeCurrentFrame(true);
+            }
+        });
+
+        // Ekran boyutu değişirse canvas konumlarını dinamik olarak güncelle
+        window.addEventListener('resize', resizeOverlayCanvas);
+        videoEl.addEventListener('loadedmetadata', resizeOverlayCanvas);
+        document.addEventListener('fullscreenchange', () => setTimeout(resizeOverlayCanvas, 50));
+
+        function stopLiveAnalysis() {
+            stopSyncPlayback();
+        }
+
+        // --- ANA BUTON ANALİZ TETİKLEYİCİSİ ---
+
+        function submitAnalysis() {
+            if (!selectedFile) return;
+
+            // A. GÖRÜNTÜ ANALİZİ MODU (Klasik Side-by-Side Çıkarım)
+            if (activeMode === 'image') {
+                // Yükleme ekranını aç
+                document.getElementById('no-result').style.display = 'none';
+                document.getElementById('result-view').style.display = 'none';
+                
+                const loadingSub = document.getElementById('loading-sub');
+                loadingSub.innerText = "Görsel pikselleri yapay zeka katmanlarından süzülüyor.";
+                document.getElementById('loading-overlay').style.display = 'flex';
+                
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                formData.append('model', selectedModelId);
+                formData.append('conf', document.getElementById('conf-slider').value);
+                formData.append('iou', document.getElementById('iou-slider').value);
+
+                fetch('/api/predict-image', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    
+                    if (data.success) {
+                        videoEl.style.display = 'none';
+                        canvasEl.style.display = 'none';
+                        
+                        imgEl.src = data.result_url;
+                        imgEl.style.display = 'block';
+                        
+                        document.getElementById('stat-count').innerText = `${data.detected_count} top`;
+                        document.getElementById('stat-speed-label').innerText = "Çıkarım Hızı";
+                        document.getElementById('stat-speed').innerText = `${data.inference_time_ms} ms`;
+                        
+                        document.getElementById('result-view').style.display = 'flex';
+                    } else {
+                        alert('Analiz başarısız: ' + data.error);
+                        document.getElementById('no-result').style.display = 'flex';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    document.getElementById('no-result').style.display = 'flex';
+                    alert('Sunucu iletişim hatası: ' + err);
+                });
+            } 
+            // B. VİDEO CANLI TAKİBİ (Oynatma hızına göre kilitleme)
+            else {
+                if (isPlayingSync) {
+                    stopSyncPlayback();
+                } else {
+                    startSyncPlayback();
+                }
+            }
+        }
+
+        // --- SKOR MASKESİ SÜRÜKLEME VE BOYUTLANDIRMA MANTIĞI ---
+
+        function toggleScoreMask() {
+            const isMaskEnabled = document.getElementById('chk-mask-enable').checked;
+            const maskBox = document.getElementById('mask-box');
+            if (isMaskEnabled) {
+                syncMaskFromRelative();
+                maskBox.style.display = 'flex';
+            } else {
+                maskBox.style.display = 'none';
+            }
+            // Duraklatılmışsa hemen kareyi yeniden analiz et ki maske etkisi görünsün
+            if (activeMode === 'video' && selectedFile && videoEl.paused && !isPlayingSync) {
+                analyzeCurrentFrame(true);
+            }
+        }
+
+        function applyMaskToOffscreenCanvas(canvasCtx, nativeWidth, nativeHeight) {
+            const isMaskEnabled = document.getElementById('chk-mask-enable').checked;
+            if (!isMaskEnabled) return;
+            if (videoEl.videoWidth === 0) return;
+            
+            // Gerçek video en-boy oranlarını ve tarayıcıdaki konumunu al
+            const geom = getVideoImageSizeAndPosition(videoEl);
+            
+            // Maskenin video görsel alanına göre bağıl koordinatını bul
+            const relX = maskX - geom.left;
+            const relY = maskY - geom.top;
+            
+            // Orijinal video piksel boyutlarına ölçekle
+            const scaleX = nativeWidth / geom.width;
+            const scaleY = nativeHeight / geom.height;
+            
+            const nativeX = relX * scaleX;
+            const nativeY = relY * scaleY;
+            const nativeW = maskW * scaleX;
+            const nativeH = maskH * scaleY;
+            
+            // Modeli kandırmak için bu alanı tamamen siyah piksellerle boya!
+            canvasCtx.fillStyle = '#000000';
+            canvasCtx.fillRect(nativeX, nativeY, nativeW, nativeH);
+        }
+
+        // Sürükle ve Bırak / Boyutlandır Etkinlikleri
+        const maskBox = document.getElementById('mask-box');
+        const maskResize = document.getElementById('mask-resize');
+
+        maskBox.addEventListener('mousedown', (e) => {
+            if (e.target === maskResize) return;
+            isDraggingMask = true;
+            
+            const startX = e.clientX - maskX;
+            const startY = e.clientY - maskY;
+            
+            function onMouseMove(e) {
+                if (!isDraggingMask) return;
+                
+                const wrapper = document.getElementById('viewport-wrapper');
+                const rect = wrapper.getBoundingClientRect();
+                
+                maskX = Math.max(0, Math.min(rect.width - maskW, e.clientX - startX));
+                maskY = Math.max(0, Math.min(rect.height - maskH, e.clientY - startY));
+                
+                maskBox.style.left = `${maskX}px`;
+                maskBox.style.top = `${maskY}px`;
+                
+                // Maskenin bağıl konumunu anlık güncelle
+                syncMaskToRelative();
+                
+                if (activeMode === 'video' && selectedFile && videoEl.paused && !isPlayingSync) {
+                    analyzeCurrentFrame(true);
+                }
+            }
+            
+            function onMouseUp() {
+                isDraggingMask = false;
+                syncMaskToRelative();
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+ 
+        maskResize.addEventListener('mousedown', (e) => {
+            isResizingMask = true;
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const startW = maskW;
+            const startH = maskH;
+            const startClientX = e.clientX;
+            const startClientY = e.clientY;
+            
+            function onMouseMove(e) {
+                if (!isResizingMask) return;
+                
+                const wrapper = document.getElementById('viewport-wrapper');
+                const rect = wrapper.getBoundingClientRect();
+                
+                maskW = Math.max(40, Math.min(rect.width - maskX, startW + (e.clientX - startClientX)));
+                maskH = Math.max(20, Math.min(rect.height - maskY, startH + (e.clientY - startClientY)));
+                
+                maskBox.style.width = `${maskW}px`;
+                maskBox.style.height = `${maskH}px`;
+                
+                // Maskenin bağıl boyutunu anlık güncelle
+                syncMaskToRelative();
+                
+                if (activeMode === 'video' && selectedFile && videoEl.paused && !isPlayingSync) {
+                    analyzeCurrentFrame(true);
+                }
+            }
+            
+            function onMouseUp() {
+                isResizingMask = false;
+                syncMaskToRelative();
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            }
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        loadTrainingModels(true);
+        pollTrainingStatus();
+        setInterval(pollTrainingStatus, 4000);
+
+        document.getElementById('file-input').setAttribute('accept', '');
+        document.getElementById('dropzone-title').innerText = "Önce Mod Seçin";
+        document.getElementById('dropzone-desc').innerText = "Önce Görüntü Analizi veya Video Takibi seçin, sonra dosya yükleyin.";
+    </script>
+</body>
+</html>

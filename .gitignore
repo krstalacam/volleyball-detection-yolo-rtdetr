@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Model weights and datasets (large files)
+*.pt
+*.pth
+*.onnx
+
+
+# Project packaging/distribution files
+*.egg-info/
+dist/
+build/
+.DS_Store
+Thumbs.db
