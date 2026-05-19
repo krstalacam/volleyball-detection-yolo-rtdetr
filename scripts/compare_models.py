@@ -20,7 +20,7 @@ RUNS_DIR = PROJECT_DIR / "runs" / "volleyball_detection"
 
 def compare_trained_models():
     """
-    Eğitilmiş modellerin (YOLOv8, YOLO11, RT-DETR, Faster R-CNN) sonuçlarını 
+    Eğitilmiş modellerin (YOLOv8, YOLO11, RT-DETR) sonuçlarını 
     runs/volleyball_detection altındaki results.csv dosyalarından okur,
     akademik karşılaştırma grafikleri çizer ve performans tablosu hazırlar.
     """
